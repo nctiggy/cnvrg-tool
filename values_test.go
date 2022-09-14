@@ -18,6 +18,7 @@ one:
     key4:
       more:
         items: here
+    key5: {}
 two:
   test2:
     key2: value2
@@ -124,7 +125,7 @@ func TestCurrentDefaultMap(t *testing.T) {
 func TestCurrentKeys(t *testing.T) {
 	goodValues := Values{}
 	buildGoodValues(&goodValues)
-	testVal := make([]map[string]interface{}, 4)
+	testVal := make([]map[string]interface{}, 5)
 	testVal[0] = map[string]interface{}{
 		"name":     "key1",
 		"changed":  '*',
@@ -145,6 +146,11 @@ func TestCurrentKeys(t *testing.T) {
 		"changed":  ' ',
 		"hasChild": true,
 		"value":    nil}
+	testVal[4] = map[string]interface{}{
+		"name":     "key5",
+		"changed":  ' ',
+		"hasChild": false,
+		"value":    map[string]interface{}{}}
 	goodValues.downLevel("one").downLevel("test1")
 	test := goodValues.currentKeys()
 	sorted := sort.SliceIsSorted(test, func(i, j int) bool {
@@ -153,7 +159,7 @@ func TestCurrentKeys(t *testing.T) {
 	if !sorted {
 		t.Errorf("Expected the slice to be alphabetized")
 	}
-	if len(test) != 4 {
+	if len(test) != 5 {
 		t.Errorf("Expeceted slice to have a length of 4, got %d", len(test))
 	}
 	for i := 0; i < len(test); i++ {
@@ -169,10 +175,13 @@ func TestIsDefaultValue(t *testing.T) {
 	goodValues := Values{}
 	buildGoodValues(&goodValues)
 	var badValue interface{} = "badValue"
-	var goodValue interface{} = "value"
+	var goodValue interface{} = "value1"
 	correct := goodValues.downLevel("one").downLevel("test1").isDefaultValue("key1", goodValue)
 	wrong := goodValues.isDefaultValue("key1", badValue)
-	if !correct && wrong {
+	if !correct {
+		t.Errorf("Default values are not correct")
+	}
+	if wrong {
 		t.Errorf("Default values are not correct")
 	}
 }
