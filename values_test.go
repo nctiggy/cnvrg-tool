@@ -31,6 +31,12 @@ one:
     key1: newValue
 `
 
+var goodSimpleValues string = `
+one:
+  test1:
+    key1: newValue
+`
+
 func buildGoodValues(v *Values) *Values {
 	err := yaml.Unmarshal([]byte(goodDefaultValues), &v.defaultValues)
 	if err != nil {
@@ -208,6 +214,19 @@ func TestMergeValues(t *testing.T) {
 	goodValues.mergeValues(mergeDefault)
 	if goodValues.inCustomValues("key1") {
 		t.Errorf("expecting key1 to be removed from custom values")
+	}
+	emptyGoodValues := Values{}
+	err := yaml.Unmarshal([]byte(goodDefaultValues), &emptyGoodValues.defaultValues)
+	if err != nil {
+		fmt.Println("error loading default values")
+	}
+	err = yaml.Unmarshal([]byte(goodSimpleValues), &emptyGoodValues.customValues)
+	if err != nil {
+		fmt.Println("error loading custom values")
+	}
+	emptyGoodValues.downLevel("one").downLevel("test1").mergeValues(mergeDefault)
+	if len(emptyGoodValues.customValues) != 0 {
+		t.Errorf("expecting nil values")
 	}
 }
 
