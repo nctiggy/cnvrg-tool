@@ -200,9 +200,14 @@ func TestMergeValues(t *testing.T) {
 	goodValues := Values{}
 	buildGoodValues(&goodValues)
 	mergeMap := map[string]interface{}{"testKey": "testValue"}
+	mergeDefault := map[string]interface{}{"key1": "value1"}
 	goodValues.downLevel("one").downLevel("test1").mergeValues(mergeMap)
 	if !goodValues.inCustomValues("testKey") {
 		t.Errorf("Merge did not happen correctly")
+	}
+	goodValues.mergeValues(mergeDefault)
+	if goodValues.inCustomValues("key1") {
+		t.Errorf("expecting key1 to be removed from custom values")
 	}
 }
 
