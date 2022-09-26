@@ -10,28 +10,23 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-var app = tview.NewApplication()
-
-var pages = tview.NewPages()
-
-var list = tview.NewList().ShowSecondaryText(false)
-
-var form = tview.NewForm()
-
-var textView = tview.NewTextView()
-
-var hotKeyText = tview.NewTextView()
-
-var flex = tview.NewFlex()
-
-var pad int = 1
+var (
+	app        = tview.NewApplication()
+	pages      = tview.NewPages()
+	list       = tview.NewList().ShowSecondaryText(false)
+	form       = tview.NewForm()
+	textView   = tview.NewTextView()
+	hotKeyText = tview.NewTextView()
+	flex       = tview.NewFlex()
+	pad        = 1
+)
 
 func setText(s string, t *tview.TextView) {
 	t.Clear()
 	t.SetText(s)
 }
 
-func buildMenu(v *Values) {
+func buildMenu(v *Values, k *hotKeys) {
 	list.Clear()
 	for _, key := range v.currentKeys() {
 		var selFunc func() = nil
@@ -41,7 +36,7 @@ func buildMenu(v *Values) {
 			name = name + " >>"
 			selFunc = func() {
 				v.downLevel(text)
-				buildMenu(v)
+				buildMenu(v, k)
 			}
 		}
 		list.AddItem(
@@ -50,10 +45,12 @@ func buildMenu(v *Values) {
 			key["changed"].(rune),
 			selFunc)
 	}
-	setEscape(v)
+	buildHotKeys(k, v)
+	setText(k.generateHelp(), hotKeyText)
+	k.setKeys(app)
 }
 
-func buildForm(v *Values) {
+func buildForm(v *Values, k *hotKeys) {
 	form.Clear(true)
 	formEntries := make(map[string]interface{})
 	for _, key := range v.currentKeys() {
@@ -112,28 +109,48 @@ func buildForm(v *Values) {
 		d, _ := yaml.Marshal(v.customValues)
 		setText(string(d), textView)
 		form.Clear(true)
-		buildMenu(v)
+		buildMenu(v, k)
 		pages.SwitchToPage("menu")
 		app.SetFocus(list)
 	})
 }
 
-func setEscape(v *Values) {
-	app.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		switch event.Key() {
-		case tcell.KeyEscape:
+func createHotKey(k tcell.Key, f func(), t string) hotKey {
+	var key hotKey
+	key.key = k
+	key.action = f
+	key.text = t
+	return key
+}
+
+func buildHotKeys(k *hotKeys, v *Values) {
+	k.resetKeys()
+	hkEscape := createHotKey(
+		tcell.KeyEscape,
+		func() {
 			v.upLevel()
-			buildMenu(v)
-		case tcell.KeyCtrlE:
-			buildForm(v)
+			buildMenu(v, k)
+		},
+		"ESC: Menu Back")
+	hkCtrlE := createHotKey(
+		tcell.KeyCtrlE,
+		func() {
+			buildForm(v, k)
 			pages.SwitchToPage("form")
 			app.SetFocus(form)
-		}
-		return event
-	})
+		},
+		"Ctrl-E: Edit Values")
+	hkCtrlS := createHotKey(
+		tcell.KeyCtrlS,
+		func() {
+			v.saveToFile("/tmp/", "cnvrg-values.yaml")
+		},
+		"Ctrl-S: Save Custom Values")
+	k.addKey(hkCtrlE).addKey(hkEscape).addKey(hkCtrlS)
 }
 
 func main() {
+	keys := hotKeys{}
 	values := Values{}
 	values.init()
 	yamlFile, _ := ioutil.ReadFile("values.yaml")
@@ -158,16 +175,25 @@ func main() {
 		SetTitle("Hotkeys").
 		SetBorder(true).
 		SetBorderPadding(pad, pad, pad, pad)
+	hotKeyText.SetText("default")
 	flex.
 		SetDirection(tview.FlexRow).
 		AddItem(tview.NewFlex().
 			AddItem(pages, 0, 1, true).
-			AddItem(textView, 0, 1, false), 0, 9, true).
-		AddItem(hotKeyText, 0, 1, false)
-	buildMenu(&values)
-	//for _, v := range defaultValues {
-	//varType := fmt.Sprint(reflect.TypeOf(v))
-	//}
+			AddItem(textView, 0, 1, false), 0, 8, true).
+		AddItem(hotKeyText, 0, 2, false)
+	buildMenu(&values, &keys)
+	/*
+		cfg := config.GetConfigOrDie()
+		discClient, _ := discovery.NewDiscoveryClientForConfig(cfg)
+		vers, err1 := discClient.ServerVersion()
+		if err1 != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+		version := vers.String()
+		setText("k8s ver: "+version, hotKeyText)
+	*/
 	if err := app.SetRoot(flex, true).Run(); err != nil {
 		panic(err)
 	}

@@ -1,6 +1,11 @@
 package main
 
-import "sort"
+import (
+	"os"
+	"sort"
+
+	"gopkg.in/yaml.v3"
+)
 
 type Values struct {
 	defaultValues map[string]interface{}
@@ -13,6 +18,17 @@ func (v *Values) init() *Values {
 	v.defaultValues = make(map[string]interface{})
 	v.customValues = make(map[string]interface{})
 	return v
+}
+
+/*
+func (v *Values) importDefaultValues(u string) *Values {
+
+}
+*/
+func (v *Values) saveToFile(l string, f string) {
+	data, _ := yaml.Marshal(v.customValues)
+	os.WriteFile(l+f, data, 0644)
+	setText("Saved to "+l+f, hotKeyText)
 }
 
 func (v *Values) mergeValues(m map[string]interface{}) *Values {
